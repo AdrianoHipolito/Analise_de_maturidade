@@ -1,0 +1,882 @@
+name: Setup Maturity Portal Project
+
+on:
+  workflow_dispatch:  # Permite executar o workflow manualmente
+
+jobs:
+  setup-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create project structure
+        run: |
+          # Criar estrutura de diretórios
+          mkdir -p migrations
+          mkdir -p public/reports
+          mkdir -p src/app/login
+          mkdir -p src/app/register
+          mkdir -p src/app/dashboard
+          mkdir -p src/app/assessments/new
+          mkdir -p src/app/assessments/fill
+          mkdir -p src/app/assessments/results
+          mkdir -p src/app/admin
+          mkdir -p src/app/api/auth/login
+          mkdir -p src/app/api/auth/logout
+          mkdir -p src/app/api/auth/me
+          mkdir -p src/app/api/auth/register
+          mkdir -p src/app/api/segments
+          mkdir -p src/app/api/segments/\[segmentId\]/questionnaires
+          mkdir -p src/app/api/questionnaires/\[questionnaireId\]
+          mkdir -p src/app/api/assessments
+          mkdir -p src/app/api/assessments/user
+          mkdir -p src/app/api/assessments/\[assessmentId\]
+          mkdir -p src/app/api/assessments/\[assessmentId\]/responses
+          mkdir -p src/app/api/assessments/\[assessmentId\]/complete
+          mkdir -p src/app/api/assessments/\[assessmentId\]/results
+          mkdir -p src/app/api/assessments/\[assessmentId\]/pdf
+          mkdir -p src/app/api/assessments/\[assessmentId\]/email
+          mkdir -p src/app/api/system/test
+          mkdir -p src/app/api/system/seed
+          mkdir -p src/app/api/system/run-tests
+          mkdir -p src/app/api/system/diagnostic
+          mkdir -p src/app/api/system/setup/admin
+          mkdir -p src/app/api/system/deployment-status
+          mkdir -p src/app/api/system/deploy
+          mkdir -p src/app/api/system/documentation
+          mkdir -p src/app/api/system/user-manual
+          mkdir -p src/components
+          mkdir -p src/hooks
+          mkdir -p src/lib
+
+      - name: Create configuration files
+        run: |
+          # Criar arquivos de configuração
+          echo 'name = "maturity-portal"
+          main = "./.vercel/output/functions/index.func"
+          compatibility_date = "2023-12-01"
+          compatibility_flags = []
+          
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "maturity-portal-db"
+          database_id = "maturity-portal-db"' > wrangler.toml
+          
+          echo '{
+            "name": "maturity-portal",
+            "version": "1.0.0",
+            "private": true,
+            "scripts": {
+              "dev": "next dev",
+              "build": "next build",
+              "start": "next start",
+              "lint": "next lint",
+              "deploy": "wrangler deploy"
+            },
+            "dependencies": {
+              "@cloudflare/workers-types": "^4.20231218.0",
+              "bcryptjs": "^2.4.3",
+              "jsonwebtoken": "^9.0.2",
+              "next": "14.0.4",
+              "nodemailer": "^6.9.8",
+              "react": "^18",
+              "react-dom": "^18",
+              "weasyprint": "^1.1.0"
+            },
+            "devDependencies": {
+              "@types/bcryptjs": "^2.4.6",
+              "@types/jsonwebtoken": "^9.0.5",
+              "@types/node": "^20",
+              "@types/nodemailer": "^6.4.14",
+              "@types/react": "^18",
+              "@types/react-dom": "^18",
+              "autoprefixer": "^10.0.1",
+              "eslint": "^8",
+              "eslint-config-next": "14.0.4",
+              "postcss": "^8",
+              "tailwindcss": "^3.3.0",
+              "typescript": "^5",
+              "wrangler": "^3.22.1"
+            }
+          }' > package.json
+          
+          echo '{
+            "compilerOptions": {
+              "target": "es5",
+              "lib": ["dom", "dom.iterable", "esnext"],
+              "allowJs": true,
+              "skipLibCheck": true,
+              "strict": true,
+              "noEmit": true,
+              "esModuleInterop": true,
+              "module": "esnext",
+              "moduleResolution": "bundler",
+              "resolveJsonModule": true,
+              "isolatedModules": true,
+              "jsx": "preserve",
+              "incremental": true,
+              "plugins": [
+                {
+                  "name": "next"
+                }
+              ],
+              "paths": {
+                "@/*": ["./src/*"]
+              }
+            },
+            "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+            "exclude": ["node_modules"]
+          }' > tsconfig.json
+          
+          echo '/** @type {import("next").NextConfig} */
+          const nextConfig = {
+            reactStrictMode: true,
+          };
+          
+          module.exports = nextConfig;' > next.config.js
+          
+          echo 'EMAIL_HOST=smtp.example.com
+          EMAIL_PORT=587
+          EMAIL_USER=user@example.com
+          EMAIL_PASS=password
+          EMAIL_SECURE=false' > .env
+
+      - name: Create database migration
+        run: |
+          echo '-- Migration number: 0001 	 2025-04-25T00:00:00.000Z
+          -- Criação das tabelas iniciais do sistema
+
+          -- Tabela de usuários
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT "user",
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          -- Tabela de segmentos de negócio
+          CREATE TABLE IF NOT EXISTS business_segments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          -- Tabela de modelos de questionários
+          CREATE TABLE IF NOT EXISTS questionnaire_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            business_segment_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (business_segment_id) REFERENCES business_segments(id)
+          );
+
+          -- Tabela de dimensões
+          CREATE TABLE IF NOT EXISTS dimensions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            weight REAL DEFAULT 1.0,
+            order_num INTEGER NOT NULL,
+            questionnaire_template_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (questionnaire_template_id) REFERENCES questionnaire_templates(id)
+          );
+
+          -- Tabela de critérios
+          CREATE TABLE IF NOT EXISTS criteria (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            order_num INTEGER NOT NULL,
+            dimension_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (dimension_id) REFERENCES dimensions(id)
+          );
+
+          -- Tabela de níveis de maturidade
+          CREATE TABLE IF NOT EXISTS maturity_levels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            level INTEGER NOT NULL,
+            description TEXT NOT NULL,
+            criteria_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (criteria_id) REFERENCES criteria(id)
+          );
+
+          -- Tabela de avaliações
+          CREATE TABLE IF NOT EXISTS assessments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            questionnaire_template_id INTEGER NOT NULL,
+            company_name TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT "in_progress",
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (questionnaire_template_id) REFERENCES questionnaire_templates(id)
+          );
+
+          -- Tabela de respostas
+          CREATE TABLE IF NOT EXISTS responses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            assessment_id INTEGER NOT NULL,
+            criteria_id INTEGER NOT NULL,
+            maturity_level INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (assessment_id) REFERENCES assessments(id),
+            FOREIGN KEY (criteria_id) REFERENCES criteria(id)
+          );
+
+          -- Tabela de relatórios
+          CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            assessment_id INTEGER NOT NULL,
+            overall_score REAL NOT NULL,
+            maturity_level TEXT NOT NULL,
+            pdf_path TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (assessment_id) REFERENCES assessments(id)
+          );
+
+          -- Tabela de logs de email
+          CREATE TABLE IF NOT EXISTS email_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            assessment_id INTEGER NOT NULL,
+            recipient_email TEXT NOT NULL,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (assessment_id) REFERENCES assessments(id)
+          );' > migrations/0001_initial.sql
+
+      - name: Create core library files
+        run: |
+          # Criar arquivos de biblioteca principais
+          echo 'import { D1Database } from "@cloudflare/workers-types";
+
+          // Variável global para armazenar a instância do banco de dados
+          let dbInstance: D1Database | null = null;
+
+          // Função para inicializar o banco de dados
+          export function initializeDb(db: D1Database) {
+            dbInstance = db;
+          }
+
+          // Exportar a instância do banco de dados
+          export const db = {
+            prepare: (query: string) => {
+              if (!dbInstance) {
+                throw new Error("Database not initialized");
+              }
+              return dbInstance.prepare(query);
+            },
+            exec: async (query: string) => {
+              if (!dbInstance) {
+                throw new Error("Database not initialized");
+              }
+              return dbInstance.exec(query);
+            }
+          };' > src/lib/db.ts
+          
+          echo 'import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+
+          // Definir o tipo de usuário
+          export interface User {
+            id: number;
+            name: string;
+            email: string;
+            role: string;
+          }
+
+          // Definir o tipo do contexto de autenticação
+          interface AuthContextType {
+            user: User | null;
+            loading: boolean;
+            login: (email: string, password: string) => Promise<boolean>;
+            logout: () => Promise<void>;
+            register: (name: string, email: string, password: string) => Promise<boolean>;
+          }
+
+          // Criar o contexto de autenticação
+          const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+          // Hook para usar o contexto de autenticação
+          export function useAuth() {
+            const context = useContext(AuthContext);
+            if (context === undefined) {
+              throw new Error("useAuth must be used within an AuthProvider");
+            }
+            return context;
+          }
+
+          // Provedor de autenticação
+          export function AuthProvider({ children }: { children: ReactNode }) {
+            const [user, setUser] = useState<User | null>(null);
+            const [loading, setLoading] = useState(true);
+
+            // Verificar se o usuário está autenticado ao carregar a página
+            useEffect(() => {
+              async function loadUserFromSession() {
+                try {
+                  const response = await fetch("/api/auth/me");
+                  if (response.ok) {
+                    const data = await response.json();
+                    setUser(data.user);
+                  }
+                } catch (error) {
+                  console.error("Error loading user session:", error);
+                } finally {
+                  setLoading(false);
+                }
+              }
+
+              loadUserFromSession();
+            }, []);
+
+            // Função de login
+            async function login(email: string, password: string) {
+              try {
+                const response = await fetch("/api/auth/login", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ email, password }),
+                });
+
+                if (response.ok) {
+                  const data = await response.json();
+                  setUser(data.user);
+                  return true;
+                }
+                return false;
+              } catch (error) {
+                console.error("Login error:", error);
+                return false;
+              }
+            }
+
+            // Função de logout
+            async function logout() {
+              try {
+                await fetch("/api/auth/logout");
+                setUser(null);
+              } catch (error) {
+                console.error("Logout error:", error);
+              }
+            }
+
+            // Função de registro
+            async function register(name: string, email: string, password: string) {
+              try {
+                const response = await fetch("/api/auth/register", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ name, email, password }),
+                });
+
+                if (response.ok) {
+                  return true;
+                }
+                return false;
+              } catch (error) {
+                console.error("Registration error:", error);
+                return false;
+              }
+            }
+
+            // Valor do contexto
+            const value = {
+              user,
+              loading,
+              login,
+              logout,
+              register,
+            };
+
+            return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+          }' > src/lib/auth.tsx
+          
+          echo 'import { NextRequest, NextResponse } from "next/server";
+          import jwt from "jsonwebtoken";
+          import { db } from "./db";
+
+          // Chave secreta para JWT (deve ser armazenada em variável de ambiente em produção)
+          const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+
+          // Interface para o payload do token JWT
+          interface JwtPayload {
+            userId: number;
+            iat: number;
+            exp: number;
+          }
+
+          // Função para verificar autenticação
+          export async function verifyAuth(request: NextRequest) {
+            try {
+              // Obter token do cookie
+              const token = request.cookies.get("auth_token")?.value;
+
+              if (!token) {
+                return {
+                  authenticated: false,
+                  user: null,
+                };
+              }
+
+              // Verificar token
+              const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+
+              // Buscar usuário no banco de dados
+              const userResult = await db
+                .prepare("SELECT id, name, email, role FROM users WHERE id = ?")
+                .bind(decoded.userId)
+                .all();
+
+              if (userResult.results.length === 0) {
+                return {
+                  authenticated: false,
+                  user: null,
+                };
+              }
+
+              const user = userResult.results[0];
+
+              return {
+                authenticated: true,
+                user,
+              };
+            } catch (error) {
+              console.error("Auth verification error:", error);
+              return {
+                authenticated: false,
+                user: null,
+              };
+            }
+          }
+
+          // Função para gerar token JWT
+          export function generateToken(userId: number) {
+            return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
+          }' > src/lib/auth-utils.ts
+          
+          echo 'import { db } from "./db";
+
+          export interface MaturityResult {
+            overallScore: number;
+            maturityLevel: string;
+            dimensions: {
+              id: number;
+              name: string;
+              score: number;
+              maturityLevel: string;
+              criteria: {
+                id: number;
+                name: string;
+                response: number;
+              }[];
+            }[];
+            recommendations: {
+              dimension: string;
+              actions: string[];
+            }[];
+          }
+
+          // Função para calcular resultados de maturidade
+          export async function calculateMaturityResults(assessmentId: number): Promise<MaturityResult> {
+            // Buscar informações da avaliação
+            const assessmentResult = await db
+              .prepare(`
+                SELECT a.id, a.questionnaire_template_id, a.company_name, a.user_id
+                FROM assessments a
+                WHERE a.id = ?
+              `)
+              .bind(assessmentId)
+              .all();
+
+            if (assessmentResult.results.length === 0) {
+              throw new Error("Assessment not found");
+            }
+
+            const assessment = assessmentResult.results[0];
+
+            // Buscar dimensões do questionário
+            const dimensionsResult = await db
+              .prepare(`
+                SELECT d.id, d.name, d.description, d.weight, d.order_num
+                FROM dimensions d
+                WHERE d.questionnaire_template_id = ?
+                ORDER BY d.order_num
+              `)
+              .bind(assessment.questionnaire_template_id)
+              .all();
+
+            const dimensions = dimensionsResult.results;
+
+            // Para cada dimensão, buscar critérios e respostas
+            const dimensionsWithCriteria = await Promise.all(
+              dimensions.map(async (dimension) => {
+                // Buscar critérios da dimensão
+                const criteriaResult = await db
+                  .prepare(`
+                    SELECT c.id, c.name, c.description, c.order_num
+                    FROM criteria c
+                    WHERE c.dimension_id = ?
+                    ORDER BY c.order_num
+                  `)
+                  .bind(dimension.id)
+                  .all();
+
+                const criteria = criteriaResult.results;
+
+                // Para cada critério, buscar resposta
+                const criteriaWithResponses = await Promise.all(
+                  criteria.map(async (criterion) => {
+                    // Buscar resposta para o critério
+                    const responseResult = await db
+                      .prepare(`
+                        SELECT r.maturity_level
+                        FROM responses r
+                        WHERE r.assessment_id = ? AND r.criteria_id = ?
+                      `)
+                      .bind(assessmentId, criterion.id)
+                      .all();
+
+                    const response = responseResult.results.length > 0
+                      ? responseResult.results[0].maturity_level
+                      : 0;
+
+                    return {
+                      ...criterion,
+                      response,
+                    };
+                  })
+                );
+
+                // Calcular pontuação da dimensão
+                const totalScore = criteriaWithResponses.reduce(
+                  (sum, criterion) => sum + criterion.response,
+                  0
+                );
+                const averageScore = criteriaWithResponses.length > 0
+                  ? totalScore / criteriaWithResponses.length
+                  : 0;
+
+                // Determinar nível de maturidade
+                const maturityLevel = calculateMaturityLevel(averageScore);
+
+                return {
+                  ...dimension,
+                  score: parseFloat(averageScore.toFixed(1)),
+                  maturityLevel,
+                  criteria: criteriaWithResponses,
+                };
+              })
+            );
+
+            // Calcular pontuação geral
+            const totalWeightedScore = dimensionsWithCriteria.reduce(
+              (sum, dimension) => sum + dimension.score * dimension.weight,
+              0
+            );
+            const totalWeight = dimensionsWithCriteria.reduce(
+              (sum, dimension) => sum + dimension.weight,
+              0
+            );
+            const overallScore = totalWeight > 0
+              ? totalWeightedScore / totalWeight
+              : 0;
+
+            // Determinar nível de maturidade geral
+            const maturityLevel = calculateMaturityLevel(overallScore);
+
+            // Gerar recomendações
+            const recommendations = generateRecommendations(dimensionsWithCriteria);
+
+            return {
+              overallScore: parseFloat(overallScore.toFixed(1)),
+              maturityLevel,
+              dimensions: dimensionsWithCriteria,
+              recommendations,
+            };
+          }
+
+          // Função para calcular nível de maturidade
+          function calculateMaturityLevel(score: number): string {
+            if (score < 1.0) return "Inexistente";
+            if (score < 2.0) return "Inexistente";
+            if (score < 3.0) return "Básico";
+            if (score < 4.0) return "Intermediário";
+            if (score < 5.0) return "Avançado";
+            return "Otimizado";
+          }
+
+          // Função para gerar recomendações
+          function generateRecommendations(dimensions: any[]) {
+            // Ordenar dimensões por pontuação (menor para maior)
+            const sortedDimensions = [...dimensions].sort((a, b) => a.score - b.score);
+            
+            // Pegar as 2 dimensões com menor pontuação
+            const lowScoreDimensions = sortedDimensions.slice(0, 2);
+            
+            return lowScoreDimensions.map(dimension => {
+              const actions = [];
+              
+              if (dimension.score < 2) {
+                actions.push(`Estabelecer processos básicos para ${dimension.name.toLowerCase()}`);
+                actions.push(`Desenvolver documentação inicial para ${dimension.name.toLowerCase()}`);
+                actions.push(`Implementar ferramentas básicas para apoiar ${dimension.name.toLowerCase()}`);
+              } else if (dimension.score < 3) {
+                actions.push(`Formalizar processos de ${dimension.name.toLowerCase()}`);
+                actions.push(`Implementar métricas para monitorar ${dimension.name.toLowerCase()}`);
+                actions.push(`Integrar ferramentas existentes para ${dimension.name.toLowerCase()}`);
+              } else if (dimension.score < 4) {
+                actions.push(`Otimizar processos de ${dimension.name.toLowerCase()}`);
+                actions.push(`Implementar análise avançada para ${dimension.name.toLowerCase()}`);
+                actions.push(`Desenvolver automação para ${dimension.name.toLowerCase()}`);
+              } else {
+                actions.push(`Implementar melhoria contínua para ${dimension.name.toLowerCase()}`);
+                actions.push(`Desenvolver análise preditiva para ${dimension.name.toLowerCase()}`);
+                actions.push(`Explorar inovações em ${dimension.name.toLowerCase()}`);
+              }
+              
+              return {
+                dimension: dimension.name,
+                actions
+              };
+            });
+          }' > src/lib/maturity.ts
+
+      - name: Create main app files
+        run: |
+          # Criar arquivos principais da aplicação
+          echo 'import { AuthProvider } from "../lib/auth";
+          import "./globals.css";
+
+          export const metadata = {
+            title: "Portal de Análise de Maturidade Empresarial",
+            description: "Avalie o grau de maturidade da sua empresa em diferentes dimensões",
+          };
+
+          export default function RootLayout({
+            children,
+          }: {
+            children: React.ReactNode;
+          }) {
+            return (
+              <html lang="pt-BR">
+                <body>
+                  <AuthProvider>{children}</AuthProvider>
+                </body>
+              </html>
+            );
+          }' > src/app/layout.tsx
+          
+          echo 'import Link from "next/link";
+
+          export default function Home() {
+            return (
+              <div className="min-h-screen bg-gray-50">
+                <header className="bg-white shadow">
+                  <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                    <h1 className="text-3xl font-bold text-gray-900">
+                      Portal de Análise de Maturidade Empresarial
+                    </h1>
+                    <div className="flex space-x-4">
+                      <Link
+                        href="/login"
+                        className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        Login
+                      </Link>
+                      <Link
+                        href="/register"
+                        className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                      >
+                        Registrar
+                      </Link>
+                    </div>
+                  </div>
+                </header>
+
+                <main>
+                  <div className="max-w-7xl mx-auto py-12 sm:px-6 lg:px-8">
+                    <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                      <div className="px-4 py-5 sm:px-6">
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          Bem-vindo ao Portal de Análise de Maturidade Empresarial
+                        </h2>
+                        <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                          Avalie o grau de maturidade da sua empresa em diferentes dimensões
+                        </p>
+                      </div>
+                      <div className="border-t border-gray-200">
+                        <div className="px-4 py-5 sm:p-6">
+                          <p className="text-gray-700 mb-4">
+                            Este portal permite avaliar o grau de maturidade da sua empresa em diferentes dimensões,
+                            identificando pontos fortes e oportunidades de melhoria.
+                          </p>
+                          <p className="text-gray-700 mb-4">
+                            Com base em questionários específicos para cada segmento de negócio, o sistema analisa
+                            a maturidade da empresa e fornece recomendações personalizadas para evolução.
+                          </p>
+                          <p className="text-gray-700 mb-4">
+                            Para começar, faça login ou registre-se no sistema.
+                          </p>
+                          <div className="mt-6">
+                            <Link
+                              href="/register"
+                              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                            >
+                              Começar Agora
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </main>
+
+                <footer className="bg-white border-t border-gray-200">
+                  <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                    <p className="text-center text-gray-500 text-sm">
+                      &copy; {new Date().getFullYear()} Portal de Análise de Maturidade Empresarial. Todos os direitos reservados.
+                    </p>
+                  </div>
+                </footer>
+              </div>
+            );
+          }' > src/app/page.tsx
+          
+          echo '@tailwind base;
+          @tailwind components;
+          @tailwind utilities;' > src/app/globals.css
+
+      - name: Create component files
+        run: |
+          # Criar arquivos de componentes
+          echo 'import Link from "next/link";
+          import { useAuth } from "@/lib/auth";
+
+          export function Navbar() {
+            const { user, logout } = useAuth();
+
+            return (
+              <header className="bg-white shadow">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex justify-between h-16">
+                    <div className="flex">
+                      <div className="flex-shrink-0 flex items-center">
+                        <Link href={user ? "/dashboard" : "/"} className="text-xl font-bold text-blue-600">
+                          Portal de Maturidade
+                        </Link>
+                      </div>
+                      {user && (
+                        <nav className="ml-6 flex space-x-8">
+                          <Link
+                            href="/dashboard"
+                            className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          >
+                            Dashboard
+                          </Link>
+                          <Link
+                            href="/assessments/new"
+                            className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          >
+                            Nova Avaliação
+                          </Link>
+                          {user.role === "admin" && (
+                            <Link
+                              href="/admin"
+                              className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            >
+                              Admin
+                            </Link>
+                          )}
+                        </nav>
+                      )}
+                    </div>
+                    <div className="flex items-center">
+                      {user ? (
+                        <div className="flex items-center space-x-4">
+                          <span className="text-sm text-gray-700">Olá, {user.name}</span>
+                          <button
+                            onClick={logout}
+                            className="px-3 py-1 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+                          >
+                            Sair
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex space-x-4">
+                          <Link
+                            href="/login"
+                            className="px-3 py-1 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                          >
+                            Login
+                          </Link>
+                          <Link
+                            href="/register"
+                            className="px-3 py-1 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                          >
+                            Registrar
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </header>
+            );
+          }' > src/components/navbar.tsx
+
+      - name: Create README file
+        run: |
+          echo '# Portal de Análise de Maturidade Empresarial
+
+          Este projeto é um portal web para análise do grau de maturidade empresarial de vários tipos de negócios. A análise é feita com base em questionários preenchidos e com critérios de avaliação pré-definidos.
+
+          ## Funcionalidades
+
+          - Sistema de autenticação de usuários
+          - Cadastro de questionários por segmento de negócio
+          - Preenchimento de formulários de avaliação
+          - Análise automática dos resultados
+          - Geração de relatórios comparativos
+          - Envio de resultados por email em formato PDF
+
+          ## Tecnologias Utilizadas
+
+          - Next.js
+          - React
+          - Tailwind CSS
+          - SQLite (Cloudflare D1)
+          - Cloudflare Workers
+
+          ## Implantação
+
+          Para implantar o projeto, siga as instruções detalhadas no [Manual de Implantação](docs/deployment.md).
+
+          ## Licença
+
+          Este projeto é licenciado sob a licença MIT - veja o arquivo LICENSE para mais detalhes.' > README.md
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "Setup Maturity Portal Project structure"
+          git push
