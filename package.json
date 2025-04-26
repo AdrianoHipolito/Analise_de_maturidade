@@ -16,8 +16,7 @@
     "next": "14.0.4",
     "nodemailer": "^6.9.8",
     "react": "^18",
-    "react-dom": "^18",
-    "weasyprint": "^1.1.0"
+    "react-dom": "^18"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
