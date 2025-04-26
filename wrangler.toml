@@ -1,0 +1,9 @@
+name = "maturity-portal"
+main = "./.vercel/output/functions/index.func"
+compatibility_date = "2023-12-01"
+compatibility_flags = []
+
+[[d1_databases]]
+binding = "DB"
+database_name = "maturity-portal-db"
+database_id = "maturity-portal-db"
